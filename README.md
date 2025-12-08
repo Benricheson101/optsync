@@ -21,10 +21,31 @@ Create a sync file associated with your Minecraft instance (e.g. sync.txt). Copy
 
 To sync:
 ```sh
-./optsync -g /path/to/global/options.txt -l /path/to/instance/options.txt -s /path/to/instance/sync.txt -m respect
+$ ./optsync -g /path/to/global/options.txt -l /path/to/instance/options.txt -s /path/to/instance/sync.txt -m respect
 ```
 
 Before a sync is performed, LOCAL and SYNC are backed up to a file ending with `.bak`.
+
+## Tips for generating sync.txt
+**Compare options in GLOBAL and LOCAL**:
+```sh
+$ comm -i3 <(sort GLOBAL) <(sort LOCAL) | paste - - | column -t
+```
+
+**Get all lines from GLOBAL are DIFFERENT than LOCAL**:
+```sh
+$ comm -i23 <(sort GLOBAL) <(sort LOCAL)
+```
+
+**Get all options that are the SAME in GLOBAL and LOCAL**:
+```sh
+$ comm -i12 <(sort GLOBAL) <(sort LOCAL)
+```
+
+**Get all lines from GLOBAL except those that have been changed in LOCAL**:
+```sh
+$ comm -i2 <(sort GLOBAL) <(sort LOCAL) | awk '{$1=$1};1'
+```
 
 ---
 
