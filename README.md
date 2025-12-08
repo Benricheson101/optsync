@@ -2,7 +2,7 @@
 
 Sync Minecraft options files between instances. Useful with launchers like Prism and MultiMC.
 
-![demo](/demo,png)
+![demo](/demo.png)
 
 > [!IMPORTANT]
 > Requires at least bash 4.0. MacOS ships with an ancient bash version, so you'll need to install it yourself.
