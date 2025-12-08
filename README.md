@@ -2,6 +2,11 @@
 
 Sync Minecraft options files between instances. Useful with launchers like Prism and MultiMC.
 
+![demo](/demo,png)
+
+> [!IMPORTANT]
+> Requires at least bash 4.0. MacOS ships with an ancient bash version, so you'll need to install it yourself.
+
 ## How it works
 ### Files:
 **GLOBAL**: global options.txt file that should be mirrored to other instances
@@ -29,22 +34,29 @@ Before a sync is performed, LOCAL and SYNC are backed up to a file ending with `
 ## Tips for generating sync.txt
 **Compare options in GLOBAL and LOCAL**:
 ```sh
-$ comm -i3 <(sort GLOBAL) <(sort LOCAL) | paste - - | column -t
+$ comm -i3 <(sort $GLOBAL) <(sort $LOCAL) | paste - - | column -t
 ```
 
 **Get all lines from GLOBAL are DIFFERENT than LOCAL**:
 ```sh
-$ comm -i23 <(sort GLOBAL) <(sort LOCAL)
+$ comm -i23 <(sort $GLOBAL) <(sort $LOCAL)
 ```
 
 **Get all options that are the SAME in GLOBAL and LOCAL**:
 ```sh
-$ comm -i12 <(sort GLOBAL) <(sort LOCAL)
+$ comm -i12 <(sort $GLOBAL) <(sort $LOCAL)
 ```
 
 **Get all lines from GLOBAL except those that have been changed in LOCAL**:
 ```sh
-$ comm -i2 <(sort GLOBAL) <(sort LOCAL) | awk '{$1=$1};1'
+$ comm -i2 <(sort $GLOBAL) <(sort $LOCAL) | awk '{$1=$1};1'
+```
+
+## Prism Launcher Pre-Launch Command
+To automatically sync settings when you launch the game, add the following script to your Prism Launcher Pre-Launch command (instance settings > settings > Custom Commands > pre-launch):
+
+```sh
+/opt/homebrew/bin/bash /path/to/optsync -g "/path/to/global/options.txt" -l "$INST_MC_DIR/options.txt" -s "$INST_MC_DIR/sync.txt" -y sync
 ```
 
 ---
