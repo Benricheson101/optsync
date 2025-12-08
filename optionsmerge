@@ -1,31 +1,25 @@
 #!/usr/bin/env bash
 
-GLOBAL=./global-options.txt
-LOCAL=./local-options.txt
-
-SAMPLE=./sample-options.txt
-
-GLOBAL=./pglobal-options.txt
-LOCAL=./partial-options.txt
-SYNCED=./synced-options.txt
-
 # THE IDEA:
 #
-# global-options.txt : the global file containing default settings
-# options.txt        : the local options file for a game instance
-# synced-options.txt : the list of synced options and their most recent synced value. the value here is used to determine if the setting was changed
+# global : the global file containing default settings
+# local  : the local options file for a game instance
+# synced : the list of synced options and their most recent synced value. the value here is used to determine if the setting was changed
 #
-# initially: create a file called synced-options.txt. this file contains the list of settings (and their initial values) that will be synced between the settings files.
-#            initially this file could either contain: every setting, no settings, only identical settings. every setting is best for new instances, only identical for existing instances.
+# modes:
+#     respect (default): respect locally changed options. if a synced option is changed locally, it will not be overwritten
+#     overwrite: overwrites all options the SYNCED file regardless of if it's been changed locally
 #
-# on game start: read gloal-options.txt, local options.txt, and synced-options.txt. recreate synced-options.txt: if synced[opt] == local[opt]: add to sync, else omit.
-#                for every synced option, replace the local option with the global option, and update synced-options.txt.
+# setup: create a file called sync.txt. this file contains the list of settings (and their initial values) that will be synced between the settings files.
+#        this file should contain a subset of options from LOCAL exactly as they are written (`<option>:<value>`).
+#
+# on game start: read GLOAL, LOCAL, and SYNCED. recreate LOCAL: if synced == local != global: replace local with global, update synced.txt
 
-# TODO: modes? "always change": overwrite everything in synced regardless of if it's changed locally, "respect": respect local changes and don't overwrite them
+GLOBAL=./global.txt
+LOCAL=./local.txt
+SYNCED=./sync.txt
 
-# TODO: should synced options be remove-only or should it automatically add back options where local==global
-
-# TODO: determine order with tsort? item -> next or prev -> item
+MODE=respect
 
 changed() {
   comm -i13 <(sort "$1") <(sort "$2")
@@ -62,33 +56,22 @@ printmap() {
   done | paste -d' ' - - | column -t
 }
 
-savemap() {
+formatoptions() {
   local -n map="$1"
 
-  local -a sorted_keys=("${options_order[@]}" "${!map[@]}" "${!synced_options[@]}")
-
+  local -a sorted_keys=("${options_order[@]}" "${!map[@]}" "${!changed_options[@]}")
   sorted_keys=($(IFS=$'\n' ; echo "${sorted_keys[*]}" | command cat -n | sort -uk2 | sort -nk1 | cut -f2-))
 
-  for key in "${options_order[@]}" ; do
-    if [[ -v synced_options["$key"] && "${synced_options["$key"]}" == "${local_options["$key"]}" ]] ; then
-      local_options["$key"]="${global_options["$key"]}"
-    fi
+  local optionstxt=""
 
-    unset synced_options["$key"]
+  for key in "${sorted_keys[@]}" ; do
+    if [[ -v map["$key"] ]] ; then
+      optionstxt+="${key}:${map["$key"]}"
+      optionstxt+=$'\n'
+    fi
   done
 
-  # for key in "${synced_options[@]}" ; do
-  #   local_options["$key"]="${local_options["$key"]}"
-  #   unset synced_options["$key"]
-  # done
-
-  # for key in "${!synced_options[@]}" ; do
-  #   if [[ "${synced_options["$key"]}" == "${local_options["$key"]}" ]] ; then
-  #     local_options["$key"]="${global_options["$key"]}"
-  #   fi
-  #
-  #   unset synced_options["$key"]
-  # done
+  echo -n "$optionstxt"
 }
 
 # creates the sync file but DOES NOT CHANGE options.txt
@@ -112,72 +95,54 @@ initcmd() {
   esac
 }
 
-computesynced() {
+# l == s and s == g -> synced
+# l == s and s != g -> unsynced, global changed
+# l != s and s == g -> local changed, remove sync
+# else -> ambiguous
+
+syncoptions() {
   for opt in "${!synced_options[@]}" ; do
-    if [[ "${synced_options["$opt"]}" == "${local_options["$opt"]}" ]] ; then
-      local_options["$opt"]="${global_options["$opt"]}"
-      synced_options["$opt"]="${global_options["$opt"]}"
+    local s="${synced_options["$opt"]}"
+    local l="${local_options["$opt"]}"
+    local g="${global_options["$opt"]}"
+
+    if [[ ($MODE == "respect" && $l == $s && $s != $g) || ($MODE == "overwrite" && $l != $g) ]] ; then
+      local_options["$opt"]="$g"
+      changed_options["$opt"]="$g"
+      synced_options["$opt"]="$g"
     else
       unset synced_options["$opt"]
     fi
   done
 }
 
-# initcmd "fullclone" "$GLOBAL"
-# printmap synced_options
+do-sync() {
+  load_file "$GLOBAL" global_options
+  load_file "$LOCAL" local_options
+  load_file "$SYNCED" synced_options
+  load_file "$SYNCED" changed_options
 
-load_file "$GLOBAL" global_options
-load_file "$LOCAL" local_options
-load_file "$SYNCED" synced_options
-# load_file <(changed "$GLOBAL" "$LOCAL") changed_options
+  syncoptions
 
-# echo "${options_order[@]}"
+  if [[ ${#synced_options[@]} > 0 ]] ; then
+    echo 'The following changes settings will be updated:'
+    printmap synced_options
 
-# printmap synced_options
+    read -p 'Apply changes? [y/n] ' yn
+    if [[ ! "$yn" =~ [Yy] ]] ; then
+      return 0
+    fi
 
-# echo "before:"
-# printmap local_options
-#
-# echo
-# echo
-# printmap synced_options
-#
-# computesynced
-#
-# echo
-# echo "after:"
-# printmap local_options
-#
-# echo
-# echo
-# printmap synced_options
+    echo 'updating local options'
+    cp "$LOCAL" "$LOCAL.bak"
+    formatoptions local_options | tee "$LOCAL"
 
-# load_file "$SAMPLE" 'global_options'
+    echo 'updating sync file'
+    cp "$SYNCED" "$SYNCED.bak"
+    formatoptions changed_options | tee "$SYNCED"
+  else
+    echo 'options.txt is up to date'
+  fi
+}
 
-# printmap global_options
-
-printmap local_options
-echo
-echo
-
-computesynced
-printmap synced_options
-
-echo
-echo
-
-printmap local_options
-
-# printmap changed_options
-
-# echo "${changed_options}"
-
-# changed "$GLOBAL" "$LOCAL"
-
-# load_file "$LOCAL" local_options
-# printmap local_options
-
-# while IFS= read line ; do
-#   IFS=: read -r key value <<< $line
-#   echo $key $value
-# done < $GLOBAL
+do-sync
