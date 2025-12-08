@@ -21,6 +21,7 @@ SYNCED=
 
 MODE=respect
 YES=0
+DRY_RUN=0
 
 changed() {
 	comm -i13 <(sort "$1") <(sort "$2")
@@ -115,15 +116,25 @@ do-sync() {
 			fi
 		fi
 
-		err
-		err 'writing local options'
-		cp "$LOCAL" "$LOCAL.bak"
-		formatoptions local_options | tee "$LOCAL" >&2
+		if [[ $DRY_RUN == 0 ]] ; then
+			err
+			err 'writing local options'
+			cp "$LOCAL" "$LOCAL.bak"
+			formatoptions local_options | tee "$LOCAL" >&2
 
-		err
-		err 'writing sync file'
-		cp "$SYNCED" "$SYNCED.bak"
-		formatoptions changed_options | tee "$SYNCED" >&2
+			err
+			err 'writing sync file'
+			cp "$SYNCED" "$SYNCED.bak"
+			formatoptions changed_options | tee "$SYNCED" >&2
+		else
+			err
+			err 'writing local options'
+			formatoptions local_options >&2
+
+			err
+			err 'writing sync file'
+			formatoptions changed_options >&2
+		fi
 	else
 		err "$(basename "$LOCAL") is up to date"
 	fi
@@ -133,7 +144,7 @@ err() {
 	echo $@ >&2
 }
 
-while getopts ":g:l:s:m:yh" opt ; do
+while getopts ":g:l:s:m:yhn" opt ; do
 	case "$opt" in
 		g)
 			GLOBAL="$OPTARG"
@@ -145,6 +156,10 @@ while getopts ":g:l:s:m:yh" opt ; do
 
 		s)
 			SYNCED="$OPTARG"
+			;;
+
+		n)
+			DRY_RUN=1
 			;;
 
 		m)
@@ -201,9 +216,10 @@ case "$cmd" in
 		    -s <file>                 sync file ($SYNCED)
 		    -m <respect|overwrite>    sync mode ($MODE)
 		    -y                        bypass confirmation ($YES)
+		    -n                        dry run ($DRY_RUN)
 		EOH
 		;;
 
 	esac
 
-# vim: noets
+# vim: noet
