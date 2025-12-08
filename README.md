@@ -56,7 +56,7 @@ $ comm -i2 <(sort $GLOBAL) <(sort $LOCAL) | awk '{$1=$1};1'
 To automatically sync settings when you launch the game, add the following script to your Prism Launcher Pre-Launch command (instance settings > settings > Custom Commands > pre-launch):
 
 ```sh
-/opt/homebrew/bin/bash /path/to/optsync -g "/path/to/global/options.txt" -l "$INST_MC_DIR/options.txt" -s "$INST_MC_DIR/sync.txt" -y sync
+/path/to/bash /path/to/optsync -g "/path/to/global/options.txt" -l "$INST_MC_DIR/options.txt" -s "$INST_MC_DIR/sync.txt" -y sync
 ```
 
 ---
