@@ -9,12 +9,12 @@ Sync Minecraft options files between instances. Useful with launchers like Prism
 
 ## How it works
 ### Files:
-**GLOBAL**: global options.txt file that should be mirrored to other instances
-**LOCAL**: a Minecraft instance's options.txt file
+**GLOBAL**: global options.txt file that should be mirrored to other instances \
+**LOCAL**: a Minecraft instance's options.txt file \
 **SYNC**: a file containing settings to be synced, as well as their most recent synced value
 
 ### Modes:
-**respect**: only sync options that have not been changed in LOCAL. this means changing a synced setting locally will not be overwritten
+**respect**: only sync options that have not been changed in LOCAL. this means changing a synced setting locally will not be overwritten \
 **overwrite**: overwrite all options denoted in SYNC regardless of whether they've been changed locally or not
 
 When a setting is changed in GLOBAL, it is propagated to LOCAL if
